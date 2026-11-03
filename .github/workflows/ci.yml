@@ -1,0 +1,41 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # No lockfile is committed: CI installs the declared dependency ranges from public PyPI.
+      - run: uv venv --python 3.12
+      - run: uv pip install --index-url https://pypi.org/simple -e . "pytest>=8" "pyyaml>=6" "pyarrow>=14"
+      - run: .venv/bin/pytest -q
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Install from the public npm registry regardless of local npm config.
+      - run: npm ci --registry=https://registry.npmjs.org/
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npx appkit lint
+      - run: npm test
+
+  agent:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # Same as the Python job: resolve the agent's declared ranges from public PyPI, not a lockfile.
+      - run: uv venv --python 3.12
+      - run: uv pip install --index-url https://pypi.org/simple -e . "pytest>=9" "pytest-asyncio>=1.3"
+      - run: .venv/bin/pytest -q

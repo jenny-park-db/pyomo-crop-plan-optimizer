@@ -1,0 +1,21 @@
+schema_version = 1
+
+[agent]
+framework = "langgraph"
+server = "agentbricks"
+deployment_name = "crop-plan-agent"
+
+[memory_store]
+name = "crop-plan-agent-memory"
+
+[session_store]
+name = "crop-plan-agent-sessions"
+
+[tracing]
+experiment_name = "/Shared/agentbricks_traces/crop-plan-agent"
+
+# Tools run as the person chatting. `jobs` is not an Apps user scope and isn't needed: solves and
+# stress tests go through Crop Plan Studio, which starts jobs as its own service principal.
+[auth.user]
+required = true
+additional_api_scopes = ["sql", "dashboards.genie"]

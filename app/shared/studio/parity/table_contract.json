@@ -1,0 +1,78 @@
+{
+ "inputs": {
+  "fields": [
+   "field_id",
+   "grower_id",
+   "region",
+   "acres",
+   "lat",
+   "lon",
+   "soil_class",
+   "rm_min",
+   "rm_max"
+  ],
+  "fixed_requests": [
+   "field_id",
+   "hybrid_id",
+   "window"
+  ],
+  "hybrids": [
+   "hybrid_id",
+   "relative_maturity",
+   "seed_cost_per_unit",
+   "units_per_acre",
+   "disease_tolerance"
+  ],
+  "planting_capacity": [
+   "region",
+   "window",
+   "acres_capacity"
+  ],
+  "seed_supply": [
+   "season",
+   "hybrid_id",
+   "units_available"
+  ],
+  "yield_forecast": [
+   "region",
+   "soil_class",
+   "hybrid_id",
+   "window",
+   "exp_yield_bu_ac",
+   "yield_sd",
+   "source_model_version"
+  ]
+ },
+ "runs": [
+  "run_id",
+  "scenario_id",
+  "job_run_id",
+  "mlflow_run_id",
+  "triggered_by",
+  "status",
+  "solver",
+  "solver_version",
+  "model_version",
+  "started_at",
+  "ended_at",
+  "error",
+  "infeasibility_reason",
+  "mip_gap",
+  "termination",
+  "objective",
+  "runtime_s",
+  "diagnosis",
+  "submitted_at"
+ ],
+ "scenarios": [
+  "scenario_id",
+  "name",
+  "parent_scenario_id",
+  "season",
+  "overrides",
+  "created_by",
+  "created_at",
+  "source",
+  "status"
+ ]
+}

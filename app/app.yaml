@@ -1,0 +1,7 @@
+# Local-development manifest only. On deploy, bundle/resources/app.yml `config` (command + env) wins.
+command: ['npm', 'run', 'start']
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: DATABRICKS_GENIE_SPACE_ID
+    valueFrom: genie-space

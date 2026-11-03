@@ -1,0 +1,159 @@
+# Every python_wheel_task key in named_parameters must match a --flag in src/cropplan_jobs/cli.py
+# (tests/test_bundle.py enforces this). Jobs pass them as --<key>=<value>.
+resources:
+  jobs:
+    seed_data:
+      name: seed_data
+      parameters:
+        - {name: triggered_by, default: ""}
+      tasks:
+        - task_key: seed
+          environment_key: serverless
+          # Serverless auto-optimization retries failed tasks; a failed solve must fail once and say why.
+          disable_auto_optimization: true
+          max_retries: 0
+          python_wheel_task:
+            package_name: cropplan
+            entry_point: cropplan-seed
+            named_parameters:
+              catalog: ${var.catalog}
+              schema: ${resources.schemas.crop_plan.name}
+              triggered_by: "{{job.parameters.triggered_by}}"
+      environments: &serverless_env
+        - environment_key: serverless
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../../dist/*.whl
+              - mlflow-skinny>=3,<4
+
+    solve_scenario:
+      name: solve_scenario
+      max_concurrent_runs: 20
+      queue: {enabled: true}
+      parameters:
+        - {name: scenario_id, default: ""}
+        - {name: run_id, default: ""}
+        - {name: triggered_by, default: ""}
+      tasks:
+        - task_key: solve
+          environment_key: serverless
+          timeout_seconds: 1800
+          # Serverless auto-optimization retries failed tasks; a failed solve must fail once and say why.
+          disable_auto_optimization: true
+          max_retries: 0
+          python_wheel_task:
+            package_name: cropplan
+            entry_point: cropplan-solve
+            named_parameters:
+              catalog: ${var.catalog}
+              schema: ${resources.schemas.crop_plan.name}
+              experiment: ${resources.experiments.scenarios.name}
+              scenario_id: "{{job.parameters.scenario_id}}"
+              run_id: "{{job.parameters.run_id}}"
+              triggered_by: "{{job.parameters.triggered_by}}"
+              job_run_id: "{{job.run_id}}"
+      environments: *serverless_env
+
+    stress_test:
+      name: stress_test
+      max_concurrent_runs: 4
+      queue: {enabled: true}
+      parameters:
+        - {name: scenario_id, default: ""}
+        - {name: n, default: "500"}
+        - {name: seed, default: "2027"}
+        - {name: stress_id, default: ""}
+        - {name: triggered_by, default: ""}
+        # Read by the AI Runtime task through the Jobs API (it gets no task parameters).
+        - {name: volume_root, default: "/Volumes/${var.catalog}/${var.schema}/stress"}
+      tasks:
+        - task_key: prepare
+          environment_key: serverless
+          # Serverless auto-optimization retries failed tasks; a failed solve must fail once and say why.
+          disable_auto_optimization: true
+          max_retries: 0
+          python_wheel_task:
+            package_name: cropplan
+            entry_point: cropplan-stress-prepare
+            named_parameters:
+              catalog: ${var.catalog}
+              schema: ${resources.schemas.crop_plan.name}
+              volume_root: "{{job.parameters.volume_root}}"
+              scenario_id: "{{job.parameters.scenario_id}}"
+              n: "{{job.parameters.n}}"
+              seed: "{{job.parameters.seed}}"
+              stress_id: "{{job.parameters.stress_id}}"
+              triggered_by: "{{job.parameters.triggered_by}}"
+              job_run_id: "{{job.run_id}}"
+        - task_key: solve
+          depends_on: [{task_key: prepare}]
+          environment_key: ai
+          timeout_seconds: 3600
+          max_retries: 0
+          ai_runtime_task:
+            # The task's own MLflow run lands in the scenarios experiment and is the stress test's parent run.
+            experiment: ${var.experiment_leaf}
+            mlflow_experiment_directory: /Workspace${var.experiment_dir}
+            deployments:
+              # sync.paths widens the sync root to the repo, so bundle files live under files/bundle/.
+              - command_path: ${workspace.file_path}/bundle/stress/command.sh
+                compute:
+                  accelerator_type: GPU_1xA10
+                  accelerator_count: 1
+        - task_key: load
+          depends_on: [{task_key: solve}]
+          environment_key: serverless
+          # Serverless auto-optimization retries failed tasks; a failed solve must fail once and say why.
+          disable_auto_optimization: true
+          max_retries: 0
+          python_wheel_task:
+            package_name: cropplan
+            entry_point: cropplan-stress-load
+            named_parameters:
+              catalog: ${var.catalog}
+              schema: ${resources.schemas.crop_plan.name}
+              volume_root: "{{job.parameters.volume_root}}"
+              job_run_id: "{{job.run_id}}"
+      environments:
+        - environment_key: serverless
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../../dist/*.whl
+              - mlflow-skinny>=3,<4
+        - environment_key: ai
+          spec:
+            environment_version: "6"
+            dependencies:
+              - ../../dist/*.whl
+              - ray[default]
+              - mlflow-skinny>=3,<4
+
+    precompute:
+      name: precompute
+      tasks:
+        - task_key: solve_baseline
+          run_job_task:
+            job_id: ${resources.jobs.solve_scenario.id}
+            job_parameters: {scenario_id: baseline-2027, triggered_by: precompute}
+        - task_key: solve_commitments
+          run_job_task:
+            job_id: ${resources.jobs.solve_scenario.id}
+            job_parameters: {scenario_id: grower-commitments-2027, triggered_by: precompute}
+        - task_key: solve_revision
+          run_job_task:
+            job_id: ${resources.jobs.solve_scenario.id}
+            job_parameters: {scenario_id: revision-1-2027, triggered_by: precompute}
+        - task_key: stress_baseline
+          depends_on: [{task_key: solve_baseline}, {task_key: solve_commitments}, {task_key: solve_revision}]
+          run_job_task:
+            job_id: ${resources.jobs.stress_test.id}
+            job_parameters: {scenario_id: baseline-2027, n: "500", seed: "2027", stress_id: stress-baseline-2027-n500,
+                             triggered_by: precompute}
+        - task_key: stress_revision
+          depends_on: [{task_key: stress_baseline}]
+          run_job_task:
+            job_id: ${resources.jobs.stress_test.id}
+            job_parameters: {scenario_id: revision-1-2027, n: "500", seed: "2027", stress_id: stress-revision-1-2027-n500,
+                             triggered_by: precompute}

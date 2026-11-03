@@ -1,0 +1,39 @@
+# Crop Plan Studio (spec §5.5, §6). SQL and Genie run as the signed-in user (user_api_scopes); the app's
+# service principal only calls the Jobs API, so its only grants are CAN_MANAGE_RUN on the two jobs below.
+resources:
+  apps:
+    crop_plan_studio:
+      name: ${var.app_name}
+      description: Create, run, compare, and stress-test 2027 crop plan scenarios (synthetic demo data).
+      source_code_path: ../../app
+      lifecycle:
+        started: true
+      user_api_scopes:
+        - sql
+        - dashboards.genie
+      # Wins over app/app.yaml on deploy (app.yaml is for local `npm run dev` only).
+      config:
+        command: ['npm', 'run', 'start']
+        env:
+          - {name: DATABRICKS_WAREHOUSE_ID, value_from: sql-warehouse}
+          - {name: DATABRICKS_GENIE_SPACE_ID, value_from: genie-space}
+          - {name: CROP_PLAN_SOLVE_JOB_ID, value_from: solve-job}
+          - {name: CROP_PLAN_STRESS_JOB_ID, value_from: stress-job}
+          - {name: MLFLOW_EXPERIMENT_ID, value_from: experiment}
+          - {name: CROP_PLAN_CATALOG, value: "${var.catalog}"}
+          - {name: CROP_PLAN_SCHEMA, value: "${resources.schemas.crop_plan.name}"}
+          # "svg" switches the field map to the offline fallback (no tile.openstreetmap.org).
+          - {name: CROP_PLAN_MAP_MODE, value: tiles}
+          # The Agent tab proxies to this app with the signed-in user's token; empty = agent not deployed.
+          - {name: CROP_PLAN_AGENT_URL, value: "${var.agent_url}"}
+      resources:
+        - name: sql-warehouse
+          sql_warehouse: {id: "${var.warehouse_id}", permission: CAN_USE}
+        - name: genie-space
+          genie_space: {name: "${var.genie_title}", space_id: "${resources.genie_spaces.crop_plan_results.id}", permission: CAN_RUN}
+        - name: solve-job
+          job: {id: "${resources.jobs.solve_scenario.id}", permission: CAN_MANAGE_RUN}
+        - name: stress-job
+          job: {id: "${resources.jobs.stress_test.id}", permission: CAN_MANAGE_RUN}
+        - name: experiment
+          experiment: {experiment_id: "${resources.experiments.scenarios.id}", permission: CAN_READ}

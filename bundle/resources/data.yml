@@ -1,0 +1,15 @@
+resources:
+  schemas:
+    crop_plan:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: Pyomo crop plan demo inputs and outputs, keyed by scenario_id (synthetic data).
+  volumes:
+    stress:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.crop_plan.name}
+      name: stress
+      comment: Hand-off files between the stress test's serverless and AI Runtime tasks.
+  experiments:
+    scenarios:
+      name: ${var.experiment_dir}/${var.experiment_leaf}

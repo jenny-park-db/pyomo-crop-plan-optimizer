@@ -1,0 +1,203 @@
+# Genie space "Crop Plan Results" (spec §5 component 4). Included by bundle/databricks.yml, so ${var.*}
+# resolves per target. Rules the API enforces on create (tests/test_genie_space.py checks them):
+# data_sources.tables sorted by identifier; every instructions list sorted by id; ids are 32 hex chars.
+resources:
+  genie_spaces:
+    crop_plan_results:
+      title: ${var.genie_title}
+      description: >-
+        Questions about crop plan scenarios, solver runs, margins, seed utilization, violations, and stress
+        tests. Synthetic demo data.
+      warehouse_id: ${var.warehouse_id}
+      parent_path: /Workspace${var.experiment_dir}
+      serialized_space:
+        version: 2
+        config:
+          sample_questions:
+            - id: 01f0c3a0000000000000000000000001
+              question: ["Across today's scenarios, which hybrids always hit their supply limit?"]
+            - id: 01f0c3a0000000000000000000000002
+              question: ["Compare gross margin, net margin, and planted % across scenarios"]
+            - id: 01f0c3a0000000000000000000000003
+              question: ["Why is the 2027 Grower Commitments scenario infeasible?"]
+            - id: 01f0c3a0000000000000000000000004
+              question: ["Which scenario has the best P10 gross margin in its stress test?"]
+        data_sources:
+          tables:
+            - identifier: ${var.catalog}.${var.schema}.fields
+              description: ["Per-scenario copy of the field inputs (one row per scenario_id, field_id). Always join on both scenario_id and field_id."]
+            - identifier: ${var.catalog}.${var.schema}.hybrids
+              description: ["Per-scenario copy of the hybrid inputs (one row per scenario_id, hybrid_id)."]
+            - identifier: ${var.catalog}.${var.schema}.plan_assignments
+              description: ["The plan of one solve: one row per run_id and field_id. hybrid_id and window are NULL when the field is unplanted. exp_margin is the field's total expected margin in USD; exp_yield is bushels per acre."]
+            - identifier: ${var.catalog}.${var.schema}.run_summary
+              description: ["KPIs of one successful solve (runs.status = 'done'), one row per run_id. acres_planted_pct is a fraction from 0 to 1. Margins are USD."]
+            - identifier: ${var.catalog}.${var.schema}.runs
+              description: ["One row per solve attempt. status is queued, validating, solving, checking, done, invalid, infeasible, or failed. diagnosis is explained, fixed_requests_impossible, or diagnosis_failed when status is infeasible. Timestamps are UTC."]
+            - identifier: ${var.catalog}.${var.schema}.scenarios
+              description: ["One row per scenario. Users name scenarios by name (for example '2027 Baseline'); match names case-insensitively. source is app, agent, stress, or seed."]
+            - identifier: ${var.catalog}.${var.schema}.seed_utilization
+              description: ["Seed use per run_id and hybrid_id. pct = units_used / units_available, a fraction from 0 to 1."]
+            - identifier: ${var.catalog}.${var.schema}.stress_test_summary
+              description: ["One row per stress test (stress_id) of a scenario: n disruption samples and P10/P50/P90 gross margin in USD."]
+            - identifier: ${var.catalog}.${var.schema}.violations
+              description: ["Issues per run_id. severity: error/warning (pre-solve validation), binding (the constraint that made an infeasible run infeasible, with the shortfall in detail), hard/penalized (post-solve checks; penalized rows are unplanted fields)."]
+        instructions:
+          text_instructions:
+            - id: 01f0c3a0000000000000000000000100
+              content:
+                - |
+                  KPI definitions (all money in USD):
+                  - Gross margin = run_summary.gross_margin: expected revenue minus seed cost of the planted fields. Compare scenarios on gross margin.
+                  - Net margin = run_summary.net_margin = gross margin minus run_summary.unplanted_penalty_total.
+                  - Planted % = run_summary.acres_planted_pct * 100.
+                  - Seed utilization = seed_utilization.pct * 100 per hybrid. A hybrid "hits its supply limit" when pct >= 0.99.
+                  Which run to use: unless the user names a run, use each scenario's latest run with runs.status = 'done' (largest ended_at). Results tables join to runs on run_id.
+                  "Today" means runs.started_at on the current UTC date. Show scenario names (scenarios.name) next to scenario_id.
+                  An infeasible run has no run_summary row; explain it from runs.infeasibility_reason and its violations rows with severity = 'binding'.
+                  Stress tests: compare scenarios on each scenario's stress test with the largest n (latest created_at among those), and lead with P10 gross margin (the downside).
+          example_question_sqls:
+            - id: 01f0c3a0000000000000000000000201
+              question: ["Across today's scenarios, which hybrids always hit their supply limit?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT scenario_id, run_id FROM ${var.catalog}.${var.schema}.runs
+                    WHERE status = 'done' AND to_date(started_at) = current_date()
+                    QUALIFY row_number() OVER (PARTITION BY scenario_id ORDER BY ended_at DESC) = 1
+                  )
+                  SELECT u.hybrid_id, count(*) AS scenarios, round(min(u.pct) * 100, 1) AS min_utilization_pct
+                  FROM ${var.catalog}.${var.schema}.seed_utilization u JOIN latest l ON u.run_id = l.run_id
+                  GROUP BY u.hybrid_id
+                  HAVING min(u.pct) >= 0.99
+                  ORDER BY u.hybrid_id
+            - id: 01f0c3a0000000000000000000000202
+              question: ["Compare gross margin, net margin, and planted % across scenarios"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT scenario_id, run_id, ended_at FROM ${var.catalog}.${var.schema}.runs WHERE status = 'done'
+                    QUALIFY row_number() OVER (PARTITION BY scenario_id ORDER BY ended_at DESC) = 1
+                  )
+                  SELECT s.scenario_id, s.name, round(r.gross_margin) AS gross_margin_usd, round(r.net_margin) AS net_margin_usd,
+                         round(r.acres_planted_pct * 100, 1) AS planted_pct, r.unplanted_fields, l.ended_at AS solved_at
+                  FROM latest l
+                  JOIN ${var.catalog}.${var.schema}.run_summary r ON r.run_id = l.run_id
+                  JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = l.scenario_id
+                  ORDER BY r.gross_margin DESC
+            - id: 01f0c3a0000000000000000000000203
+              question: ["Why is the 2027 Grower Commitments scenario infeasible?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT r.run_id, r.scenario_id, r.status, r.diagnosis, r.infeasibility_reason
+                    FROM ${var.catalog}.${var.schema}.runs r
+                    JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                    WHERE lower(s.name) = lower('2027 Grower Commitments') AND r.status = 'infeasible'
+                    QUALIFY row_number() OVER (ORDER BY r.ended_at DESC) = 1
+                  )
+                  SELECT l.run_id, l.diagnosis, l.infeasibility_reason, v.rule, v.entity, v.severity, v.detail
+                  FROM latest l
+                  LEFT JOIN ${var.catalog}.${var.schema}.violations v ON v.run_id = l.run_id AND v.severity IN ('binding', 'warning')
+                  ORDER BY v.severity, v.entity
+            - id: 01f0c3a0000000000000000000000204
+              question: ["Which fields are unplanted in the 2027 Baseline, and how many acres?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT r.run_id, r.scenario_id FROM ${var.catalog}.${var.schema}.runs r
+                    JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                    WHERE lower(s.name) = lower('2027 Baseline') AND r.status = 'done'
+                    QUALIFY row_number() OVER (ORDER BY r.ended_at DESC) = 1
+                  )
+                  SELECT a.field_id, f.region, f.grower_id, a.acres
+                  FROM latest l
+                  JOIN ${var.catalog}.${var.schema}.plan_assignments a ON a.run_id = l.run_id
+                  JOIN ${var.catalog}.${var.schema}.fields f ON f.scenario_id = l.scenario_id AND f.field_id = a.field_id
+                  WHERE a.hybrid_id IS NULL
+                  ORDER BY a.acres DESC
+            - id: 01f0c3a0000000000000000000000205
+              question: ["What is seed utilization by hybrid for Revision 1?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT r.run_id FROM ${var.catalog}.${var.schema}.runs r
+                    JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                    WHERE lower(s.name) = lower('Revision 1') AND r.status = 'done'
+                    QUALIFY row_number() OVER (ORDER BY r.ended_at DESC) = 1
+                  )
+                  SELECT u.hybrid_id, u.units_used, u.units_available, round(u.pct * 100, 1) AS utilization_pct
+                  FROM latest l JOIN ${var.catalog}.${var.schema}.seed_utilization u ON u.run_id = l.run_id
+                  ORDER BY u.pct DESC
+            - id: 01f0c3a0000000000000000000000206
+              question: ["What is gross margin by region for the 2027 Baseline?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT r.run_id, r.scenario_id FROM ${var.catalog}.${var.schema}.runs r
+                    JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                    WHERE lower(s.name) = lower('2027 Baseline') AND r.status = 'done'
+                    QUALIFY row_number() OVER (ORDER BY r.ended_at DESC) = 1
+                  )
+                  SELECT f.region, round(sum(a.exp_margin)) AS gross_margin_usd, sum(a.acres) AS acres,
+                         sum(CASE WHEN a.hybrid_id IS NULL THEN a.acres ELSE 0 END) AS unplanted_acres
+                  FROM latest l
+                  JOIN ${var.catalog}.${var.schema}.plan_assignments a ON a.run_id = l.run_id
+                  JOIN ${var.catalog}.${var.schema}.fields f ON f.scenario_id = l.scenario_id AND f.field_id = a.field_id
+                  GROUP BY f.region
+                  ORDER BY f.region
+            - id: 01f0c3a0000000000000000000000207
+              question: ["Which runs failed or were infeasible today, and who triggered them?"]
+              sql:
+                - |
+                  SELECT r.run_id, s.name AS scenario, r.status, r.triggered_by, r.started_at, r.ended_at,
+                         coalesce(r.infeasibility_reason, r.error) AS reason
+                  FROM ${var.catalog}.${var.schema}.runs r
+                  LEFT JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                  WHERE r.status IN ('failed', 'infeasible', 'invalid') AND to_date(coalesce(r.started_at, r.submitted_at)) = current_date()
+                  ORDER BY coalesce(r.started_at, r.submitted_at) DESC
+            - id: 01f0c3a0000000000000000000000208
+              question: ["Which scenario has the best P10 gross margin in its stress test?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT * FROM ${var.catalog}.${var.schema}.stress_test_summary
+                    QUALIFY row_number() OVER (PARTITION BY scenario_id ORDER BY n DESC, created_at DESC) = 1
+                  )
+                  SELECT l.scenario_id, s.name, l.n, l.n_solved, round(l.p10_gross_margin) AS p10_usd,
+                         round(l.p50_gross_margin) AS p50_usd, round(l.p90_gross_margin) AS p90_usd
+                  FROM latest l JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = l.scenario_id
+                  ORDER BY l.p10_gross_margin DESC
+            - id: 01f0c3a0000000000000000000000209
+              question: ["Which fields changed hybrid or window between the 2027 Baseline and Revision 1?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT s.name, r.run_id FROM ${var.catalog}.${var.schema}.runs r
+                    JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                    WHERE lower(s.name) IN ('2027 baseline', 'revision 1') AND r.status = 'done'
+                    QUALIFY row_number() OVER (PARTITION BY s.scenario_id ORDER BY r.ended_at DESC) = 1
+                  ),
+                  base AS (SELECT a.* FROM ${var.catalog}.${var.schema}.plan_assignments a JOIN latest l ON a.run_id = l.run_id WHERE lower(l.name) = '2027 baseline'),
+                  rev AS (SELECT a.* FROM ${var.catalog}.${var.schema}.plan_assignments a JOIN latest l ON a.run_id = l.run_id WHERE lower(l.name) = 'revision 1')
+                  SELECT b.field_id, b.hybrid_id AS baseline_hybrid, b.window AS baseline_window,
+                         v.hybrid_id AS revision_hybrid, v.window AS revision_window,
+                         round(v.exp_margin - b.exp_margin) AS margin_change_usd
+                  FROM base b JOIN rev v ON v.field_id = b.field_id
+                  WHERE NOT (b.hybrid_id <=> v.hybrid_id) OR NOT (b.window <=> v.window)
+                  ORDER BY b.field_id
+            - id: 01f0c3a0000000000000000000000210
+              question: ["How many acres of each hybrid are planted in each window in the 2027 Baseline?"]
+              sql:
+                - |
+                  WITH latest AS (
+                    SELECT r.run_id FROM ${var.catalog}.${var.schema}.runs r
+                    JOIN ${var.catalog}.${var.schema}.scenarios s ON s.scenario_id = r.scenario_id
+                    WHERE lower(s.name) = lower('2027 Baseline') AND r.status = 'done'
+                    QUALIFY row_number() OVER (ORDER BY r.ended_at DESC) = 1
+                  )
+                  SELECT a.hybrid_id, a.window, sum(a.acres) AS acres, count(*) AS fields
+                  FROM latest l JOIN ${var.catalog}.${var.schema}.plan_assignments a ON a.run_id = l.run_id
+                  WHERE a.hybrid_id IS NOT NULL
+                  GROUP BY a.hybrid_id, a.window
+                  ORDER BY a.hybrid_id, a.window

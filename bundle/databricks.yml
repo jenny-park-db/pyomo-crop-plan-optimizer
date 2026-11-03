@@ -1,0 +1,70 @@
+# One bundle for the demo's data, jobs, Genie space, and app. Bootstrap and operations: docs/runbook.md.
+bundle:
+  name: pyomo-crop-plan
+
+# The app's source lives in ../app, outside this directory, so the sync root is widened to the repo.
+# Bundle files therefore land under ${workspace.file_path}/bundle/ (see the stress command_path).
+sync:
+  paths:
+    - .
+    - ../app
+
+include:
+  - resources/*.yml
+  # The Genie space definition lives with its docs in genie/; included here so ${var.*} resolves per target.
+  - ../genie/*.yml
+
+variables:
+  catalog:
+    description: >-
+      UC catalog (must already exist). Use an existing catalog on workspaces that pre-create one and don't
+      allow CREATE CATALOG; scripts/bootstrap.py sets this from --catalog or CROP_PLAN_CATALOG.
+    default: pyomo_crop_plan_demo_catalog
+  schema:
+    description: Schema for every demo table and the stress-test volume.
+    default: crop_plan
+  experiment_dir:
+    description: Workspace folder of the MLflow experiment (no /Workspace prefix).
+    default: /Shared
+  experiment_leaf:
+    description: MLflow experiment name inside experiment_dir.
+    default: pyomo_crop_plan_scenarios
+  warehouse_id:
+    description: SQL warehouse for the app's queries and the Genie space (looked up by name).
+    lookup:
+      warehouse: Serverless Starter Warehouse
+  genie_title:
+    description: Title of the Genie space.
+    default: Crop Plan Results
+  app_name:
+    description: Databricks App name (lowercase, hyphens, at most 26 characters).
+    default: crop-plan-studio
+  agent_url:
+    description: >-
+      URL of the planning agent's app (agent-bricks-crop-plan-agent). "none" until scripts/deploy_agent.py deploys
+      the agent and records it in .databricks/bundle/<target>/variable-overrides.json (not "": the Apps API
+      rejects an empty env value, which broke a fresh workspace's first deploy).
+    default: none
+
+artifacts:
+  cropplan_wheel:
+    type: whl
+    path: ..
+    build: uv build --wheel --clear
+
+targets:
+  # Not `mode: development`: that mode renames the schema to dev_<user>_crop_plan and the experiment to
+  # "[dev <user>] ...", but the app, Genie space, and agent address them by fixed names.
+  dev:
+    default: true
+    workspace:
+      root_path: ~/.bundle/${bundle.name}/${bundle.target}
+  prod:
+    mode: production
+    workspace:
+      root_path: ~/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      schema: crop_plan_prod
+      experiment_leaf: pyomo_crop_plan_scenarios_prod
+      genie_title: Crop Plan Results (prod)
+      app_name: crop-plan-studio-prod

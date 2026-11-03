@@ -1,0 +1,65 @@
+# Evaluation set (spec §7, §9): what-ifs, data questions, robustness questions, off-topic.
+# expected_tools: acceptable tool families for the agent's first tool call (solve_scenario, genie,
+# stress_test_plan, get_stress_test), or [none] when the agent must answer without tools.
+# what-ifs start real solves through Crop Plan Studio (as the person running the eval); q11 starts one
+# small stress test (n=10).
+- id: q01-ia-w1-half
+  category: what-if
+  question: What if Iowa loses half its W1 planting capacity to rain?
+  expected_tools: [solve_scenario]
+- id: q02-revision
+  category: what-if
+  question: What if H-112 seed supply goes up 10% and we let one hybrid take up to 45% of a grower's acres?
+  expected_tools: [solve_scenario]
+- id: q03-ne-w2-delay
+  category: what-if
+  question: Planting in Nebraska slips by about a week in W2. What does that do to the plan?
+  expected_tools: [solve_scenario]
+- id: q04-corn-price
+  category: what-if
+  question: What happens to the baseline plan if the corn price drops to $3.90 a bushel?
+  expected_tools: [solve_scenario]
+- id: q05-drop-commitments
+  category: what-if
+  question: Re-run the 2027 Grower Commitments scenario with the fixed grower requests turned off. Does it become feasible?
+  expected_tools: [solve_scenario]
+- id: q06-supply-limit
+  category: data
+  question: Across today's scenarios, which hybrids always hit their supply limit?
+  expected_tools: [genie]
+- id: q07-best-margin
+  category: data
+  question: Which stored scenario has the highest gross margin, and how much higher is it than the baseline?
+  expected_tools: [genie]
+- id: q08-why-infeasible
+  category: data
+  question: Why did the latest run of the 2027 Grower Commitments scenario come back infeasible?
+  expected_tools: [genie]
+- id: q09-who-ran
+  category: data
+  question: How many solves has each scenario had, and who triggered them?
+  expected_tools: [genie]
+- id: q10-stored-stress
+  category: data
+  question: Compare the stored N=500 stress-test P10 gross margin of the baseline and Revision 1.
+  expected_tools: [genie, get_stress_test]
+- id: q11-quick-stress
+  category: robustness
+  question: How fragile is the revision-1-2027 plan? Run a quick stress test with 10 samples.
+  expected_tools: [stress_test_plan]
+- id: q12-read-stress
+  category: robustness
+  question: What were the P10 and P90 gross margins in stress test stress-revision-1-2027-n500?
+  expected_tools: [get_stress_test]
+- id: q13-baseline-robust
+  category: robustness
+  question: Is the baseline plan robust to seed shortfalls and lost planting capacity?
+  expected_tools: [stress_test_plan, get_stress_test, genie]
+- id: q14-haiku
+  category: off-topic
+  question: Write me a haiku about tractors.
+  expected_tools: [none]
+- id: q15-weather-forecast
+  category: off-topic
+  question: What's the weather forecast for Des Moines tomorrow?
+  expected_tools: [none]

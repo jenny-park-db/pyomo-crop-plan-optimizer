@@ -1,0 +1,414 @@
+[
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": null
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {}
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.45,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {
+    "H-112": 1.1
+   },
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "diversity_cap": 0.45,
+   "supply_pct": {
+    "H-112": 1.1
+   }
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {
+    "IA": {
+     "W1": 0.5
+    }
+   },
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "capacity_pct": {
+    "IA": {
+     "W1": 0.5
+    }
+   }
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {
+    "H-112": 0.0
+   },
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "supply_pct": {
+    "H-112": 0
+   }
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {
+    "H-112": 3.0
+   },
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "supply_pct": {
+    "H-112": 3
+   }
+  }
+ },
+ {
+  "message": "supply_pct.H-112 must be between 0 and 3.0, got 3.5",
+  "ok": false,
+  "path": "supply_pct.H-112",
+  "payload": {
+   "supply_pct": {
+    "H-112": 3.5
+   }
+  }
+ },
+ {
+  "message": "supply_pct.H-112 must be a number, got '1.1'",
+  "ok": false,
+  "path": "supply_pct.H-112",
+  "payload": {
+   "supply_pct": {
+    "H-112": "1.1"
+   }
+  }
+ },
+ {
+  "message": "supply_pct.H-112 must be a number, got True",
+  "ok": false,
+  "path": "supply_pct.H-112",
+  "payload": {
+   "supply_pct": {
+    "H-112": true
+   }
+  }
+ },
+ {
+  "message": "supply_pct must be an object of hybrid_id -> multiplier",
+  "ok": false,
+  "path": "supply_pct",
+  "payload": {
+   "supply_pct": [
+    1.1
+   ]
+  }
+ },
+ {
+  "message": "capacity_pct must be an object of region -> {window -> multiplier}",
+  "ok": false,
+  "path": "capacity_pct",
+  "payload": {
+   "capacity_pct": {
+    "IA": 0.5
+   }
+  }
+ },
+ {
+  "message": "capacity_pct.IA.W1 must be between 0 and 3.0, got -0.1",
+  "ok": false,
+  "path": "capacity_pct.IA.W1",
+  "payload": {
+   "capacity_pct": {
+    "IA": {
+     "W1": -0.1
+    }
+   }
+  }
+ },
+ {
+  "message": "diversity_cap must be in (0, 1], got 0.0",
+  "ok": false,
+  "path": "diversity_cap",
+  "payload": {
+   "diversity_cap": 0
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 1.0,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "diversity_cap": 1
+  }
+ },
+ {
+  "message": "diversity_cap must be a finite number, got '0.4'",
+  "ok": false,
+  "path": "diversity_cap",
+  "payload": {
+   "diversity_cap": "0.4"
+  }
+ },
+ {
+  "message": "diversity_cap must be a finite number, got None",
+  "ok": false,
+  "path": "diversity_cap",
+  "payload": {
+   "diversity_cap": null
+  }
+ },
+ {
+  "message": "unplanted_penalty_per_acre must be >= 0",
+  "ok": false,
+  "path": "unplanted_penalty_per_acre",
+  "payload": {
+   "unplanted_penalty_per_acre": -1
+  }
+ },
+ {
+  "message": "corn_price_per_bu must be > 0",
+  "ok": false,
+  "path": "corn_price_per_bu",
+  "payload": {
+   "corn_price_per_bu": 0
+  }
+ },
+ {
+  "message": "solver must be one of ('highs', 'gurobi'), got 'cplex'",
+  "ok": false,
+  "path": "solver",
+  "payload": {
+   "solver": "cplex"
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "gurobi",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "solver": "gurobi"
+  }
+ },
+ {
+  "message": "time_limit_s must be between 1 and 3600",
+  "ok": false,
+  "path": "time_limit_s",
+  "payload": {
+   "time_limit_s": 0
+  }
+ },
+ {
+  "message": "time_limit_s must be a whole number, got 30.5",
+  "ok": false,
+  "path": "time_limit_s",
+  "payload": {
+   "time_limit_s": 30.5
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 3600,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "time_limit_s": 3600
+  }
+ },
+ {
+  "message": "mip_rel_gap must be between 0 and 0.05",
+  "ok": false,
+  "path": "mip_rel_gap",
+  "payload": {
+   "mip_rel_gap": 0.06
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": null,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "threads": null
+  }
+ },
+ {
+  "message": "threads must be at least 1, got 0",
+  "ok": false,
+  "path": "threads",
+  "payload": {
+   "threads": 0
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": true,
+   "mip_rel_gap": 0.001,
+   "random_seed": null,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "random_seed": null
+  }
+ },
+ {
+  "message": "random_seed must be a whole number, got 1.5",
+  "ok": false,
+  "path": "random_seed",
+  "payload": {
+   "random_seed": 1.5
+  }
+ },
+ {
+  "message": "fixed_requests_enabled must be true or false, got 'yes'",
+  "ok": false,
+  "path": "fixed_requests_enabled",
+  "payload": {
+   "fixed_requests_enabled": "yes"
+  }
+ },
+ {
+  "ok": true,
+  "overrides": {
+   "capacity_pct": {},
+   "corn_price_per_bu": 4.25,
+   "diversity_cap": 0.4,
+   "fixed_requests_enabled": false,
+   "mip_rel_gap": 0.001,
+   "random_seed": 2027,
+   "solver": "highs",
+   "supply_pct": {},
+   "threads": 1,
+   "time_limit_s": 60,
+   "unplanted_penalty_per_acre": 150.0
+  },
+  "payload": {
+   "fixed_requests_enabled": false
+  }
+ },
+ {
+  "message": "unknown override keys: also, bogus",
+  "ok": false,
+  "path": "unknown override keys",
+  "payload": {
+   "also": 2,
+   "bogus": 1
+  }
+ }
+]
